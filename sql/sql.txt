@@ -1,0 +1,144 @@
+-- create tables
+
+CREATE EXTERNAL TABLE IF NOT EXISTS global_temperatures(
+  dt DATE,
+  land_average_temperature FLOAT,
+  land_average_temperature_uncertainty FLOAT,
+  land_max_temperature FLOAT,
+  land_max_temperature_uncertainty FLOAT,
+  land_min_temperature FLOAT,
+  land_min_temperature_uncertainty FLOAT,
+  land_and_ocean_average_temperature FLOAT,
+  land_and_ocean_average_temperature_uncertainty FLOAT
+  )
+  ROW FORMAT DELIMITED 
+  FIELDS TERMINATED BY ','
+  LINES TERMINATED BY '\n'
+  LOCATION 's3://final-project-udacity/original/temperatures_data/global_temperatures/';
+
+
+CREATE EXTERNAL TABLE IF NOT EXISTS global_land_temperatures_by_state(
+    dt DATE,
+    average_temperature FLOAT,
+    average_temperature_uncertainty FLOAT,
+    state VARCHAR(100),
+    country VARCHAR(100)
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+LINES TERMINATED BY '\n'
+LOCATION 's3://final-project-udacity/original/temperatures_datas/global_land_temperatures_by_state/';
+
+
+CREATE EXTERNAL TABLE IF NOT EXISTS global_land_temperatures_by_major_city(
+    dt DATE,
+    average_temperature FLOAT,
+    average_temperature_uncertainty FLOAT,
+    city VARCHAR(100),
+    country VARCHAR(100),
+    latitude VARCHAR(10),
+    longintude VARCHAR(10)
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+LINES TERMINATED BY '\n'
+LOCATION 's3://final-project-udacity/original/temperatures_data/global_land_temperatures_by_major_city/'
+
+
+CREATE EXTERNAL TABLE IF NOT EXISTS global_land_temperatures_by_country(
+    dt DATE,
+    average_temperature FLOAT,
+    average_temperature_uncertainty FLOAT,
+    country VARCHAR(50)
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ','
+LINES TERMINATED BY '\n'
+LOCATION 's3://final-project-udacity/original/temperatures_data/global_land_temperatures_by_country/'
+
+CREATE EXTERNAL TABLE IF NOT EXISTS global_land_temperatures_by_city(
+    dt DATE,
+    average_temperature FLOAT,
+    average_temperature_uncertainty FLOAT,
+    City VARCHAR(200),
+    Country VARCHAR(100),
+    Latitude VARCHAR(10),
+    Longitude VARCHAR(10)
+)
+ROW FORMAT DELIMITED 
+FIELDS TERMINATED BY ','
+LINES TERMINATED BY '\n'
+LOCATION 's3://final-project-udacity/original/temperatures_data/global_land_temperatures_by_city/'
+
+-- buscar a quantidade de anos distintos para particionar por ano 
+
+-- criando as tabelas intermediarias
+
+CREATE TABLE global_temperatures_intermediary
+WITH (
+      format = 'Parquet',
+      parquet_compression = 'SNAPPY',
+      external_location = 's3://final-project-udacity/intermediary/global_temperatures_intermediary/'
+  )
+  AS SELECT 
+  dt,
+  land_average_temperature,
+  land_average_temperature_uncertainty,
+  land_max_temperature,
+  land_max_temperature_uncertainty,
+  land_min_temperature,
+  land_min_temperature_uncertainty,
+  land_and_ocean_average_temperature,
+  land_and_ocean_average_temperature_uncertainty,
+  EXTRACT(YEAR FROM dt) as year,
+  EXTRACT(MONTH FROM dt) as month
+  FROM global_temperatures;    
+
+
+CREATE TABLE global_land_temperatures_by_state_intermediary
+WITH(
+      format = 'Parquet',
+      parquet_compression = 'SNAPPY',
+      external_location = 's3://final-project-udacity/intermediary/global_land_temperatures_by_state_intermediary/'
+    )
+AS SELECT
+dt,
+average_temperature,
+average_temperature_uncertainty,
+state,
+country,
+EXTRACT(YEAR FROM dt) as year,
+EXTRACT(MONTH FROM dt) as month
+FROM global_land_temperatures_by_state
+
+
+-- particionando
+CREATE TABLE global_temperatures_partitioned 
+WITH (
+      format = 'Parquet',
+      parquet_compression = 'SNAPPY',
+      external_location = 's3://final-project-udacity/partitioned-data/global_temperatures_partitioned/',
+      bucketed_by = ARRAY['year'],
+      bucket_count = 266
+      )
+  AS SELECT dt,
+  land_average_temperature,
+  land_average_temperature_uncertainty,
+  land_max_temperature,
+  land_max_temperature_uncertainty,
+  land_min_temperature,
+  land_min_temperature_uncertainty,
+  land_and_ocean_average_temperature,
+  land_and_ocean_average_temperature_uncertainty,
+  year,
+  month
+  FROM global_temperatures_intermediary; 
+
+
+CREATE TABLE global_land_temperatures_by_state_partitioned
+WITH (
+    format = 'Parquet',
+    parquet_compression = 'SNAPPY',
+    external_location = 's3://final-project-udacity/partitioned-data/global_land_temperatures_by_state_partitioned/'
+
+)
