@@ -153,15 +153,28 @@ LINES TERMINATED BY '\n'
 LOCATION 's3://final-project-udacity/original/airport_codes/'
 TBLPROPERTIES("skip.header.line.count"="1");
 
--- buscar a quantidade de anos distintos para particionar por ano 
+CREATE EXTERNAL TABLE IF NOT EXISTS country_code_and_name(
+    country_code INT,
+    country_name VARCHAR(100)
+)
+ROW FORMAT DELIMITED
+FIELDS TERMINATED BY ';'
+LINES TERMINATED BY '\n'
+LOCATION 's3://final-project-udacity/original/country_code_and_name/'
+TBLPROPERTIES("skip.header.line.count"="1")
 
--- criando as tabelas intermediarias
+-- criando as tabelas de dimensões *****************************************************************************************
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
+----------------------------------------------------------------------------------------------
 
-CREATE TABLE global_temperatures_intermediary
+CREATE TABLE global_temperatures_dim
 WITH (
       format = 'Parquet',
       parquet_compression = 'SNAPPY',
-      external_location = 's3://final-project-udacity/intermediary/global_temperatures_intermediary/'
+      external_location = 's3://final-project-udacity/dimension/global_temperatures_dim/'
   )
   AS SELECT 
   dt,
@@ -178,11 +191,11 @@ WITH (
   FROM global_temperatures;    
 
 
-CREATE TABLE global_land_temperatures_by_state_intermediary
+CREATE TABLE global_land_temperatures_by_state_dim
 WITH(
       format = 'Parquet',
       parquet_compression = 'SNAPPY',
-      external_location = 's3://final-project-udacity/intermediary/global_land_temperatures_by_state_intermediary/'
+      external_location = 's3://final-project-udacity/dimension/global_land_temperatures_by_state_dim/'
     )
 AS SELECT
 dt,
@@ -195,11 +208,11 @@ EXTRACT(MONTH FROM dt) as month
 FROM global_land_temperatures_by_state;
 
 
-CREATE TABLE global_land_temperatures_by_major_city_intermediary
+CREATE TABLE global_land_temperatures_by_major_city_dim
 WITH(
         format = 'Parquet',
         parquet_compression = 'SNAPPY',
-        external_location = 's3://final-project-udacity/intermediary/global_land_temperatures_by_major_city_intermediary/'
+        external_location = 's3://final-project-udacity/dimension/global_land_temperatures_by_major_city_dim/'
     )
 AS SELECT
     dt, 
@@ -213,38 +226,67 @@ AS SELECT
     EXTRACT(MONTH FROM dt) as month
     from global_land_temperatures_by_major_city;
 
-global_land_temperatures_by_country
 
-
-global_land_temperatures_by_city
-
--- particionando
-CREATE TABLE global_temperatures_partitioned 
-WITH (
-      format = 'Parquet',
-      parquet_compression = 'SNAPPY',
-      external_location = 's3://final-project-udacity/partitioned-data/global_temperatures_partitioned/',
-      bucketed_by = ARRAY['year'],
-      bucket_count = 266
-      )
-  AS SELECT dt,
-  land_average_temperature,
-  land_average_temperature_uncertainty,
-  land_max_temperature,
-  land_max_temperature_uncertainty,
-  land_min_temperature,
-  land_min_temperature_uncertainty,
-  land_and_ocean_average_temperature,
-  land_and_ocean_average_temperature_uncertainty,
-  year,
-  month
-  FROM global_temperatures_intermediary; 
-
-
-CREATE TABLE global_land_temperatures_by_state_partitioned
-WITH (
+CREATE TABLE global_land_temperatures_by_country_dim
+WITH(
     format = 'Parquet',
     parquet_compression = 'SNAPPY',
-    external_location = 's3://final-project-udacity/partitioned-data/global_land_temperatures_by_state_partitioned/'
-
+    external_location = 's3://final-project-udacity/dimension/global_land_temperatures_by_country_dim/'
 )
+AS SELECT
+    dt,
+    average_temperature,
+    average_temperature_uncertainty,
+    country,
+    EXTRACT(YEAR FROM dt) as year,
+    EXTRACT(MONTH FROM dt) as month
+    from global_land_temperatures_by_country;
+
+
+CREATE TABLE global_land_temperatures_by_city_dim
+WITH(
+    format = 'Parquet',
+    parquet_compression = 'SNAPPY',
+    external_location = 's3://final-project-udacity/dimension/global_land_temperatures_by_city_dim/'
+)
+AS SELECT
+    * , 
+    EXTRACT(YEAR FROM dt) as year,
+    EXTRACT(MONTH FROM dt) as month
+    from global_land_temperatures_by_city;
+
+
+CREATE TABLE immigration_dim
+WITH(
+    format = 'Parquet',
+    parquet_compression = 'SNAPPY',
+    external_location = 's3://final-project-udacity/dimension/immigration_dim/'
+)
+AS SELECT * from immigration;
+
+
+CREATE TABLE us_cities_demographics_dim
+WITH(
+    format = 'Parquet',
+    parquet_compression = 'SNAPPY',
+    external_location = 's3://final-project-udacity/dimension/us_cities_demographics/'
+)
+AS SELECT * FROM us_cities_demographics;
+
+
+CREATE TABLE airport_codes_dim
+WITH(
+    format = 'Parquet',
+    parquet_compression = 'SNAPPY',
+    external_location = 's3://final-project-udacity/dimension/airport_codes_dim/'
+)
+AS SELECT * FROM airport_codes;
+
+
+CREATE TABLE country_code_and_name_dim
+WITH(
+    format = 'Parquet',
+    parquet_compression = 'SNAPPY',
+    external_location = 's3://final-project-udacity/dimension/country_code_and_name_dim/'
+)
+AS SELECT * FROM country_code_and_name;
